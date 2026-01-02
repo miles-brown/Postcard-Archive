@@ -1,0 +1,230 @@
+import { useRoute, Link } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, ArrowLeft, ExternalLink, Calendar, DollarSign, User } from "lucide-react";
+
+export default function PostcardDetail() {
+  const [, params] = useRoute("/postcard/:id");
+  const postcardId = params?.id ? parseInt(params.id) : 0;
+
+  const { data: postcard, isLoading, error } = trpc.postcards.getById.useQuery({
+    id: postcardId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !postcard) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Postcard not found</h2>
+          <p className="text-muted-foreground mb-6">
+            This postcard may have been removed or doesn't exist.
+          </p>
+          <Link href="/gallery">
+            <Button>Back to Gallery</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card">
+        <div className="container py-6">
+          <Link href="/gallery">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Gallery
+            </Button>
+          </Link>
+        </div>
+      </header>
+
+      <main className="container py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Images */}
+          <div className="space-y-4">
+            {postcard.images && postcard.images.length > 0 ? (
+              postcard.images.map((image, index) => (
+                <Card key={image.id} className="overflow-hidden">
+                  <img
+                    src={image.s3Url}
+                    alt={`${postcard.title} - Image ${index + 1}`}
+                    className="w-full h-auto"
+                  />
+                </Card>
+              ))
+            ) : (
+              <Card className="aspect-[4/3] bg-muted flex items-center justify-center">
+                <p className="text-muted-foreground">No images available</p>
+              </Card>
+            )}
+          </div>
+
+          {/* Details */}
+          <div className="space-y-8">
+            {/* Title and metadata */}
+            <div>
+              <div className="flex items-start justify-between mb-4">
+                <h1 className="text-4xl font-bold">{postcard.title}</h1>
+                <Badge
+                  variant={
+                    postcard.warPeriod === "WWI"
+                      ? "secondary"
+                      : postcard.warPeriod === "WWII"
+                      ? "default"
+                      : "destructive"
+                  }
+                  className="text-sm"
+                >
+                  {postcard.warPeriod}
+                </Badge>
+              </div>
+
+              {postcard.description && (
+                <p className="text-muted-foreground leading-relaxed">
+                  {postcard.description}
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Listing information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">Listing Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {postcard.price && (
+                  <div className="flex items-center gap-3">
+                    <DollarSign className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Price</p>
+                      <p className="font-semibold">{postcard.price}</p>
+                    </div>
+                  </div>
+                )}
+
+                {postcard.seller && (
+                  <div className="flex items-center gap-3">
+                    <User className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Seller</p>
+                      <p className="font-semibold">{postcard.seller}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Date Found</p>
+                    <p className="font-semibold">
+                      {new Date(postcard.dateFound).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <a
+                  href={postcard.ebayUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <Button variant="outline" className="w-full">
+                    View on eBay
+                    <ExternalLink className="w-4 h-4 ml-2" />
+                  </Button>
+                </a>
+              </CardContent>
+            </Card>
+
+            {/* Transcriptions */}
+            {postcard.transcriptions && postcard.transcriptions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">Transcription</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {postcard.transcriptions.map((transcription, index) => (
+                    <div key={transcription.id}>
+                      {index > 0 && <Separator className="my-6" />}
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          {transcription.language && (
+                            <Badge variant="outline" className="text-xs">
+                              {transcription.language.toUpperCase()}
+                            </Badge>
+                          )}
+                          {transcription.confidence && (
+                            <Badge variant="secondary" className="text-xs">
+                              {transcription.confidence} confidence
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="bg-muted p-4 rounded-lg">
+                          <p className="whitespace-pre-wrap font-serif leading-relaxed">
+                            {transcription.transcribedText}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {postcard.transcriptionStatus === "pending" && (
+              <Card className="bg-muted">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Transcription pending. Check back soon!
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {postcard.transcriptionStatus === "processing" && (
+              <Card className="bg-muted">
+                <CardContent className="pt-6 flex items-center justify-center gap-3">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <p className="text-sm text-muted-foreground">
+                    Transcription in progress...
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border mt-24">
+        <div className="container py-12 text-center text-sm text-muted-foreground">
+          <p>Historical Postcard Archive • Preserving handwritten history</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
