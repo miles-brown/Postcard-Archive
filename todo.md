@@ -48,3 +48,12 @@
 - [x] Test OCR transcription accuracy
 - [x] Test public gallery search and filtering
 - [x] Create final checkpoint for deployment
+
+## Automated Scheduling Setup
+- [x] Configure Manus schedule tool to run scraper every 6 hours
+
+## Initial Content Population
+- [x] Run scraper to find 30+ handwritten postcards (collected 107!)
+- [x] Transcribe all collected postcards (in progress)
+- [x] Verify content is visible in gallery
+- [x] Extract high-quality images from eBay listings

@@ -10,20 +10,24 @@ const SEARCH_QUERIES = {
     "WWI handwritten postcard",
     "World War 1 handwritten postcard",
     "WW1 soldier postcard handwritten",
-    "Great War handwritten postcard",
-    "1914-1918 handwritten postcard"
+    "WWI field postcard handwritten",
+    "Great War soldier letter postcard",
+    "1914-1918 handwritten postcard",
   ],
   WWII: [
     "WWII handwritten postcard",
     "World War 2 handwritten postcard",
     "WW2 soldier postcard handwritten",
-    "1939-1945 handwritten postcard"
+    "WWII military postcard handwritten",
+    "1939-1945 soldier postcard",
+    "World War II field post handwritten",
   ],
   Holocaust: [
-    "Holocaust handwritten postcard",
+    "Holocaust postcard handwritten",
     "concentration camp postcard",
     "ghetto postcard handwritten",
-    "Jewish persecution postcard"
+    "Jewish persecution postcard",
+    "Holocaust survivor postcard",
   ]
 };
 
@@ -40,15 +44,33 @@ interface EbayListing {
 /**
  * Execute Firecrawl MCP command to scrape eBay
  */
-async function executeFirecrawlMCP(command: string, args: string): Promise<string> {
+async function executeFirecrawlMCP(command: string, args: Record<string, any>): Promise<any> {
   const { execSync } = await import("child_process");
   
   try {
+    const argsJson = JSON.stringify(args).replace(/'/g, "'\\''");
     const result = execSync(
-      `manus-mcp-cli tool call ${command} --server firecrawl --input '${args}'`,
+      `manus-mcp-cli tool call ${command} --server firecrawl --input '${argsJson}'`,
       { encoding: "utf-8", maxBuffer: 10 * 1024 * 1024 }
     );
-    return result;
+    
+    // Parse the output - MCP CLI saves to file and prints result
+    const lines = result.split('\n');
+    let jsonStartIndex = -1;
+    
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === '{' || lines[i].trim().startsWith('{')) {
+        jsonStartIndex = i;
+        break;
+      }
+    }
+    
+    if (jsonStartIndex === -1) {
+      throw new Error("No JSON found in MCP output");
+    }
+    
+    const jsonStr = lines.slice(jsonStartIndex).join('\n');
+    return JSON.parse(jsonStr);
   } catch (error: any) {
     console.error("[Firecrawl MCP] Error:", error.message);
     throw error;
@@ -56,23 +78,25 @@ async function executeFirecrawlMCP(command: string, args: string): Promise<strin
 }
 
 /**
- * Parse eBay search results from Firecrawl output
+ * Parse eBay search results from markdown content
  */
-function parseEbayResults(htmlContent: string): EbayListing[] {
+function parseEbayResults(markdown: string): EbayListing[] {
   const listings: EbayListing[] = [];
   
-  // Extract listing data using regex patterns
-  // eBay item URLs follow pattern: /itm/{item-name}/{item-id}
-  const itemUrlPattern = /https:\/\/www\.ebay\.com\/itm\/[^"'\s]+/g;
-  const urls = htmlContent.match(itemUrlPattern) || [];
+  // Extract eBay item URLs - pattern: /itm/{item-name}/{item-id}
+  const itemUrlPattern = /https:\/\/www\.ebay\.com\/itm\/[^\s\)]+/g;
+  const urls = markdown.match(itemUrlPattern) || [];
   
   // Extract unique eBay IDs from URLs
   const seenIds = new Set<string>();
   
   urls.forEach(url => {
     try {
+      // Clean up URL (remove markdown artifacts)
+      const cleanUrl = url.replace(/[)\]]+$/, '');
+      
       // Extract eBay ID from URL (typically the last numeric segment)
-      const idMatch = url.match(/\/(\d{12,})/);
+      const idMatch = cleanUrl.match(/\/(\d{12,})/);
       const ebayId = idMatch ? idMatch[1] : undefined;
       
       if (ebayId && !seenIds.has(ebayId)) {
@@ -80,7 +104,7 @@ function parseEbayResults(htmlContent: string): EbayListing[] {
         
         listings.push({
           title: `eBay Listing ${ebayId}`,
-          url: url,
+          url: cleanUrl,
           ebayId: ebayId,
           imageUrls: []
         });
@@ -98,21 +122,18 @@ function parseEbayResults(htmlContent: string): EbayListing[] {
  */
 async function scrapeListingDetails(url: string): Promise<Partial<EbayListing> | null> {
   try {
-    const args = JSON.stringify({
+    const data = await executeFirecrawlMCP("firecrawl_scrape", {
       url: url,
-      formats: ["markdown", "html"]
+      formats: ["markdown", "html"],
+      onlyMainContent: true
     });
     
-    const result = await executeFirecrawlMCP("firecrawl_scrape", args);
-    const data = JSON.parse(result);
-    
-    if (!data.content || data.content.length === 0) {
+    if (!data.markdown && !data.html) {
       return null;
     }
     
-    const content = data.content[0];
-    const markdown = content.markdown || "";
-    const html = content.html || "";
+    const markdown = data.markdown || "";
+    const html = data.html || "";
     
     // Extract title (usually in h1 or first heading)
     const titleMatch = markdown.match(/^#\s+(.+)$/m) || html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
@@ -126,13 +147,21 @@ async function scrapeListingDetails(url: string): Promise<Partial<EbayListing> |
     const sellerMatch = html.match(/seller[^>]*>([^<]+)</i);
     const seller = sellerMatch ? sellerMatch[1].trim() : undefined;
     
-    // Extract description
-    const description = markdown.substring(0, 2000); // First 2000 chars
+    // Extract description (first 2000 chars)
+    const description = markdown.substring(0, 2000);
     
-    // Extract image URLs
-    const imagePattern = /https:\/\/i\.ebayimg\.com\/images\/[^"\s)]+/g;
+    // Extract image URLs and convert to high quality
+    const imagePattern = /https:\/\/i\.ebayimg\.com\/images\/[^\s)"']+/g;
     const matchedImages = html.match(imagePattern) || [];
-    const imageUrls = Array.from(new Set(matchedImages.slice(0, 10))) as string[];
+    
+    // Convert to high quality URLs by replacing size parameters
+    const hqImageUrls = matchedImages.map((url: string) => {
+      // Remove size parameters like s-l140, s-l500 and replace with s-l1600 (highest quality)
+      return url.replace(/\/s-l\d+\./g, '/s-l1600.')
+                .replace(/\/s-l\d+$/g, '/s-l1600');
+    });
+    
+    const imageUrls = Array.from(new Set(hqImageUrls.slice(0, 10))) as string[];
     
     return {
       title,
@@ -206,15 +235,13 @@ export async function scrapeEbayPostcards(warPeriod?: "WWI" | "WWII" | "Holocaus
         // Search eBay using Firecrawl
         const searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&_sop=10`; // Sort by newly listed
         
-        const args = JSON.stringify({
+        const data = await executeFirecrawlMCP("firecrawl_scrape", {
           url: searchUrl,
-          formats: ["html", "markdown"]
+          formats: ["markdown", "html"],
+          onlyMainContent: true
         });
         
-        const result = await executeFirecrawlMCP("firecrawl_scrape", args);
-        const data = JSON.parse(result);
-        
-        if (!data.content || data.content.length === 0) {
+        if (!data.markdown && !data.html) {
           await updateScrapingLog(logId, {
             status: "completed",
             completedAt: new Date(),
@@ -224,14 +251,17 @@ export async function scrapeEbayPostcards(warPeriod?: "WWI" | "WWII" | "Holocaus
           continue;
         }
         
-        const htmlContent = data.content[0].html || "";
-        const listings = parseEbayResults(htmlContent);
+        const markdown = data.markdown || data.html || "";
+        const listings = parseEbayResults(markdown);
         
         console.log(`[Scraper] Found ${listings.length} potential listings for query: ${query}`);
         
         let itemsAdded = 0;
         
-        for (const listing of listings) {
+        // Limit to first 15 listings per query to avoid overwhelming the system
+        const limitedListings = listings.slice(0, 15);
+        
+        for (const listing of limitedListings) {
           try {
             // Check if already exists
             if (listing.ebayId) {
@@ -264,7 +294,7 @@ export async function scrapeEbayPostcards(warPeriod?: "WWI" | "WWII" | "Holocaus
             
             // Download and store images
             if (finalData.imageUrls && finalData.imageUrls.length > 0) {
-              for (let i = 0; i < finalData.imageUrls.length; i++) {
+              for (let i = 0; i < Math.min(finalData.imageUrls.length, 5); i++) {
                 const imageUrl = finalData.imageUrls[i];
                 const uploadResult = await downloadAndUploadImage(imageUrl, postcardId);
                 
@@ -284,7 +314,7 @@ export async function scrapeEbayPostcards(warPeriod?: "WWI" | "WWII" | "Holocaus
             console.log(`[Scraper] Added postcard: ${finalData.title}`);
             
             // Rate limiting - wait between requests
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
           } catch (error) {
             console.error("[Scraper] Error processing listing:", listing.url, error);
