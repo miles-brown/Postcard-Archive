@@ -57,3 +57,6 @@
 - [x] Transcribe all collected postcards (in progress)
 - [x] Verify content is visible in gallery
 - [x] Extract high-quality images from eBay listings
+
+## GitHub Integration
+- [ ] Push project to miles-brown/Postcard-Archive repository
