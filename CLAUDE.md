@@ -263,3 +263,185 @@ Exported from `server/scheduledTasks.ts`:
 - `runScheduledScrapeAndTranscribe()` — both pipelines sequentially
 - `runScheduledScrape()` — scraping only
 - `runScheduledTranscription()` — transcription only
+
+## Database Layer API (`server/db.ts`)
+
+All database access is funneled through these functions. Never write raw queries in routers.
+
+**Connection**: Lazy-initialized via `getDb()`. Returns cached Drizzle MySQL2 client or `null` if unavailable. Functions throw `"Database not available"` when the connection is down.
+
+### User functions
+- `upsertUser(user: InsertUser)` — insert or update by `openId`; auto-assigns `role: 'admin'` when `openId === ENV.ownerOpenId`
+- `getUserByOpenId(openId: string)` — returns `User | undefined`
+
+### Postcard functions
+- `createPostcard(postcard: InsertPostcard)` — returns `insertId`
+- `getPostcardByEbayId(ebayId: string)` — duplicate check before scraping
+- `getAllPostcards(filters?: { warPeriod?, searchQuery?, isPublic? })` — supports AND filtering; `searchQuery` is OR across title + description with LIKE; ordered by `dateFound` desc
+- `getPostcardById(id: number)` — returns `Postcard | undefined`
+- `updatePostcard(id, updates: Partial<InsertPostcard>)` — partial update
+- `deletePostcard(id: number)`
+
+### Image functions
+- `createPostcardImage(image: InsertPostcardImage)` — returns `insertId`
+- `getPostcardImages(postcardId: number)` — all images for a postcard
+- `getPrimaryImage(postcardId: number)` — image where `isPrimary = true`
+
+### Transcription functions
+- `createTranscription(transcription: InsertTranscription)` — returns `insertId`
+- `getPostcardTranscriptions(postcardId: number)` — all transcriptions for a postcard
+- `searchPostcardsByTranscription(searchQuery: string)` — joins postcards ↔ transcriptions, filters `isPublic = true`, deduplicates by postcardId
+
+### Scraping log functions
+- `createScrapingLog(log: InsertScrapingLog)` — returns `insertId`
+- `updateScrapingLog(id, updates: Partial<InsertScrapingLog>)`
+- `getRecentScrapingLogs(limit = 50)` — ordered by `startedAt` desc
+- `getPostcardsNeedingTranscription()` — returns up to 10 postcards with `transcriptionStatus = "pending"`, ordered by `dateFound`
+
+## Scraper Details (`server/scraperService.ts`)
+
+### eBay Search Queries
+
+| War Period | Queries |
+|-----------|---------|
+| WWI | "WWI handwritten postcard", "World War 1 handwritten postcard", "WW1 soldier postcard handwritten", "WWI field postcard handwritten", "Great War soldier letter postcard", "1914-1918 handwritten postcard" |
+| WWII | "WWII handwritten postcard", "World War 2 handwritten postcard", "WW2 soldier postcard handwritten", "WWII military postcard handwritten", "1939-1945 soldier postcard", "World War II field post handwritten" |
+| Holocaust | "Holocaust postcard handwritten", "concentration camp postcard", "ghetto postcard handwritten", "Jewish persecution postcard", "Holocaust survivor postcard" |
+
+### Processing Limits
+- **15 listings** max per search query
+- **5 images** max per postcard (first is `isPrimary`)
+- **10 postcards** per transcription batch
+- **3-second delay** between eBay requests (rate limiting)
+- **1-second delay** between LLM transcription calls
+- **10 MB** max buffer for MCP output and image downloads
+
+### Duplicate Prevention
+- `Set<string>` tracks eBay IDs within a single scrape run
+- `getPostcardByEbayId()` checks database before creating a new record
+- Image URLs deduplicated via `Set<string>` before download
+
+### Image Handling
+- URLs converted to high quality: e.g., `s-l140` → `s-l1600`
+- S3 key format: `postcards/{postcardId}/{nanoid()}.{extension}`
+- Content type derived from response headers
+
+## Transcription Details (`server/transcriptionService.ts`)
+
+### LLM Prompts
+- **System**: "You are an expert at reading and transcribing historical handwritten text from postcards. Transcribe the handwritten text exactly as it appears, preserving line breaks and formatting. If text is unclear or illegible, indicate with [illegible]. Include any dates, signatures, or addresses you can identify. Respond with ONLY the transcribed text, no additional commentary."
+- **User**: "Please transcribe all handwritten text visible in this postcard image. Include any dates, addresses, messages, and signatures."
+
+### Confidence Scoring
+Counts `[illegible]` markers in the response text. Formula: `((totalWords - illegibleCount) / totalWords) * 100`, returned as a string like `"85%"`.
+
+### Language Detection
+Simple regex heuristics on transcribed text:
+- German (`de`): `/[äöüß]/i`
+- French (`fr`): `/[àâçéèêëîïôùûü]/i`
+- Default: English (`en`)
+
+## LLM Integration (`server/_core/llm.ts`)
+
+### `invokeLLM(params: InvokeParams): Promise<InvokeResult>`
+
+- **Model**: `gemini-2.5-flash` (hardcoded)
+- **Endpoint**: `{BUILT_IN_FORGE_API_URL}/v1/chat/completions`
+- **Max tokens**: 32768
+- **Thinking budget**: 128 tokens
+- **Auth**: `Authorization: Bearer {BUILT_IN_FORGE_API_KEY}`
+
+Supports text, image_url (with detail level), and file_url content types. Tool calls, tool choice, and structured output (json_schema response format) are supported. Message content is automatically normalized between string and object formats for API compatibility.
+
+## Storage Integration (`server/storage.ts`)
+
+### `storagePut(relKey, data, contentType)`
+Uploads to S3 via Forge API. Sends as multipart FormData. Returns `{ key, url }`.
+
+### `storageGet(relKey)`
+Gets a presigned download URL from Forge API. Returns `{ key, url }`.
+
+Both functions use `BUILT_IN_FORGE_API_URL` and `BUILT_IN_FORGE_API_KEY`. Keys are normalized (leading slashes stripped).
+
+## Error Handling Patterns
+
+### By Layer
+| Layer | Pattern |
+|-------|---------|
+| tRPC procedures | Throw `TRPCError` with codes: `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `BAD_REQUEST` |
+| Services (scraper, transcription) | Try-catch with `console.error`; continue on individual item failures; update status fields in DB |
+| Database layer | Throw `"Database not available"` when connection is down; return empty arrays for read operations on unavailable DB |
+| External APIs (LLM, S3) | Throw on HTTP errors with status + body text |
+| Client | Error boundaries, Sonner toasts, auto-redirect to login on 401 |
+
+### Shared Error Classes (`shared/_core/errors.ts`)
+- `HttpError(statusCode, message)` — base class
+- `BadRequestError(msg)` → 400
+- `UnauthorizedError(msg)` → 401
+- `ForbiddenError(msg)` → 403
+- `NotFoundError(msg)` → 404
+
+### Shared Error Constants (`shared/const.ts`)
+- `UNAUTHED_ERR_MSG` = `"Please login (10001)"`
+- `NOT_ADMIN_ERR_MSG` = `"You do not have required permission (10002)"`
+
+## tRPC Middleware Chain
+
+Defined in `server/_core/trpc.ts` with `superjson` transformer:
+
+1. **`publicProcedure`** — no middleware, `ctx.user` may be `null`
+2. **`protectedProcedure`** — middleware throws `UNAUTHORIZED` if `ctx.user` is null
+3. **`adminProcedure`** — middleware throws `FORBIDDEN` if `ctx.user` is null or `role !== 'admin'`
+
+Context (`server/_core/context.ts`) silently catches auth errors so public procedures always work.
+
+## Cookie Configuration (`server/_core/cookies.ts`)
+
+Session cookie options:
+- `httpOnly: true` — not accessible to JavaScript
+- `path: "/"` — sent for all paths
+- `sameSite: "none"` — allows cross-site requests
+- `secure` — dynamically set based on request protocol (checks `x-forwarded-proto` header)
+
+## Frontend Patterns
+
+### Component Design
+- **Card + CardContent**: Standard wrapper pattern for consistent padding
+- **Badge variants**: `secondary` (WWI), `default` (WWII), `destructive` (Holocaust), `outline` (status)
+- **Icons**: Lucide React, typically `w-4 h-4` or `w-5 h-5` with `text-muted-foreground`
+- **Responsive grids**: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
+- **Empty states**: Icon + heading + description + action button
+- **Loading**: `<Loader2 className="animate-spin" />` centered in container
+
+### State Management
+- **Queries**: `trpc.procedure.useQuery()` with reactive dependencies
+- **Mutations**: `trpc.procedure.useMutation({ onSuccess, onError })` with toast feedback and cache refetch
+- **Auth state**: `useAuth()` hook, persists user info to localStorage key `"manus-runtime-user-info"`
+- **No pagination**: Gallery loads all matching postcards; filtering is server-side via tRPC input params
+
+### CSS Theme System (`client/src/index.css`)
+Uses OKLch color space. Key design tokens:
+- **Background**: pale cool blue-gray (`oklch(0.97 0.005 240)`)
+- **Primary**: black (`oklch(0.15 0 0)`) — for text and buttons
+- **Secondary**: soft blue (`oklch(0.85 0.03 220)`) — for accents
+- **Accent**: soft pink/salmon (`oklch(0.88 0.05 10)`) — for geometric accents
+- **Destructive**: red (`oklch(0.55 0.22 25)`) — for errors and Holocaust badge
+- **Cards**: pure white (`oklch(1 0 0)`)
+
+Dark mode theme is defined but not currently active (ThemeProvider defaults to `"light"`).
+
+### Key Client Components
+- **AIChatBox**: Reusable chat UI with markdown rendering (Streamdown), auto-scroll, suggested prompts, user/assistant message bubbles
+- **Map**: Google Maps integration via Forge proxy, supports markers/places/geocoding/geometry
+- **DashboardLayout**: Resizable sidebar (200–480px, persisted to localStorage), mobile-responsive with SidebarTrigger header
+
+## Notable Implementation Details
+
+- **No CI/CD**: No GitHub Actions, Dockerfile, or `.env.example` in the repository
+- **pnpm overrides**: `tailwindcss>nanoid` pinned to `3.3.7`
+- **Wouter patch**: Custom patch applied via `pnpm.patchedDependencies`
+- **Body parser**: 50 MB limit for file uploads (`server/_core/index.ts`)
+- **Port fallback**: Server tries ports 3000–3019 sequentially if preferred port is busy
+- **tRPC batching**: Client uses `httpBatchLink` — multiple concurrent queries are batched into a single HTTP request
+- **SuperJSON**: Used as tRPC transformer to serialize Dates, Maps, Sets, BigInt across the wire
+- **OAuth login URL**: Built dynamically at runtime in `client/src/const.ts` via `getLoginUrl()`, base64-encodes the redirect URI as state param
