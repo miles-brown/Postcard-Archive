@@ -5,6 +5,21 @@ import { ENV } from './_core/env';
 
 type StorageConfig = { baseUrl: string; apiKey: string };
 
+function applyCdn(urlStr: string): string {
+  if (process.env.VITE_CDN_URL) {
+    try {
+      const cdn = new URL(process.env.VITE_CDN_URL);
+      const original = new URL(urlStr);
+      original.host = cdn.host;
+      original.protocol = cdn.protocol;
+      return original.toString();
+    } catch (e) {
+      return urlStr;
+    }
+  }
+  return urlStr;
+}
+
 function getStorageConfig(): StorageConfig {
   const baseUrl = ENV.forgeApiUrl;
   const apiKey = ENV.forgeApiKey;
@@ -89,14 +104,15 @@ export async function storagePut(
     );
   }
   const url = (await response.json()).url;
-  return { key, url };
+  return { key, url: applyCdn(url) };
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
   const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);
+  const downloadUrl = await buildDownloadUrl(baseUrl, key, apiKey);
   return {
     key,
-    url: await buildDownloadUrl(baseUrl, key, apiKey),
+    url: applyCdn(downloadUrl),
   };
 }

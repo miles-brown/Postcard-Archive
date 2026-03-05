@@ -1,0 +1,60 @@
+name: Automated Database Backup
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Run daily at midnight UTC
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install MySQL Client
+        run: sudo apt-get update && sudo apt-get install -y mysql-client
+        
+      - name: Extract Database Credentials & Create Dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          # The URL is formatted as mysql://user:password@host/dbname
+          # We need to extract these components to pass them to mysqldump
+          
+          # Remove protocol
+          URL_NO_PROTO=$(echo $DATABASE_URL | sed 's|^mysql://||')
+          
+          # Extract user:pass and host/db
+          USER_PASS=$(echo $URL_NO_PROTO | cut -d@ -f1)
+          HOST_DB=$(echo $URL_NO_PROTO | cut -d@ -f2)
+          
+          # Extract individual fields
+          DB_USER=$(echo $USER_PASS | cut -d: -f1)
+          DB_PASS=$(echo $USER_PASS | cut -d: -f2)
+          DB_HOST=$(echo $HOST_DB | cut -d/ -f1)
+          DB_NAME=$(echo $HOST_DB | cut -d/ -f2 | cut -d? -f1)
+          
+          echo "Creating backup for database $DB_NAME from $DB_HOST..."
+          
+          # Create backups directory
+          mkdir -p backups
+          
+          # Current timestamp
+          TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+          BACKUP_FILE="backups/postcard_archive_${TIMESTAMP}.sql"
+          
+          # Execute mysqldump
+          mysqldump -u "$DB_USER" -p"$DB_PASS" -h "$DB_HOST" "$DB_NAME" --set-gtid-purged=OFF --no-tablespaces > "$BACKUP_FILE"
+          
+          echo "Backup created successfully: $BACKUP_FILE"
+          
+      - name: Upload Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-${{ github.run_id }}
+          path: backups/*.sql
+          retention-days: 7
+          
+      # Phase 2 implementation would involve pushing this to AWS S3 using AWS CLI
