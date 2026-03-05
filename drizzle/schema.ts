@@ -1,18 +1,18 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, index } from "drizzle-orm/mysql-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
 /**
  * Core user table backing auth flow.
  */
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+export const users = sqliteTable("users", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    openId: text("openId").notNull().unique(),
+    name: text("name"),
+    email: text("email"),
+    loginMethod: text("loginMethod"),
+    role: text("role", { enum: ["user", "admin"] }).default("user").notNull(),
+    createdAt: integer("createdAt", { mode: 'timestamp' }), // default managed in app code
+    updatedAt: integer("updatedAt", { mode: 'timestamp' }), // default managed in app code
+    lastSignedIn: integer("lastSignedIn", { mode: 'timestamp' }), // default managed in app code
 });
 
 export type User = typeof users.$inferSelect;
@@ -21,26 +21,22 @@ export type InsertUser = typeof users.$inferInsert;
 /**
  * Postcard listings scraped from eBay
  */
-export const postcards = mysqlTable("postcards", {
-  id: int("id").autoincrement().primaryKey(),
-  ebayUrl: text("ebayUrl").notNull(),
-  ebayId: varchar("ebayId", { length: 255 }),
-  title: text("title").notNull(),
-  price: varchar("price", { length: 50 }),
-  seller: varchar("seller", { length: 255 }),
-  description: text("description"),
-  warPeriod: mysqlEnum("warPeriod", ["WWI", "WWII", "Holocaust"]).notNull(),
-  dateFound: timestamp("dateFound").defaultNow().notNull(),
-  transcriptionStatus: mysqlEnum("transcriptionStatus", ["pending", "processing", "completed", "failed"]).default("pending").notNull(),
-  isPublic: boolean("isPublic").default(true).notNull(),
-  uploadedBy: int("uploadedBy"), // Populated if a user manually uploaded
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  ebayIdIdx: index("ebayId_idx").on(table.ebayId),
-  warPeriodIdx: index("warPeriod_idx").on(table.warPeriod),
-  transcriptionStatusIdx: index("transcriptionStatus_idx").on(table.transcriptionStatus),
-}));
+export const postcards = sqliteTable("postcards", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    ebayUrl: text("ebayUrl").notNull(),
+    ebayId: text("ebayId"),
+    title: text("title").notNull(),
+    price: text("price"),
+    seller: text("seller"),
+    description: text("description"),
+    warPeriod: text("warPeriod", { enum: ["WWI", "WWII", "Holocaust"] }).notNull(),
+    dateFound: integer("dateFound", { mode: 'timestamp' }),
+    transcriptionStatus: text("transcriptionStatus", { enum: ["pending", "processing", "completed", "failed"] }).default("pending").notNull(),
+    isPublic: integer("isPublic", { mode: 'boolean' }).default(true).notNull(),
+    uploadedBy: integer("uploadedBy"), // Populated if a user manually uploaded
+    createdAt: integer("createdAt", { mode: 'timestamp' }),
+    updatedAt: integer("updatedAt", { mode: 'timestamp' }),
+});
 
 export type Postcard = typeof postcards.$inferSelect;
 export type InsertPostcard = typeof postcards.$inferInsert;
@@ -48,15 +44,12 @@ export type InsertPostcard = typeof postcards.$inferInsert;
 /**
  * Saved postcard collections mapping users to postcards
  */
-export const userCollections = mysqlTable("userCollections", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  postcardId: int("postcardId").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, (table) => ({
-  userIdIdx: index("userId_idx").on(table.userId),
-  postcardIdIdx: index("postcardId_idx").on(table.postcardId),
-}));
+export const userCollections = sqliteTable("userCollections", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("userId").notNull(),
+    postcardId: integer("postcardId").notNull(),
+    createdAt: integer("createdAt", { mode: 'timestamp' }),
+});
 
 export type UserCollection = typeof userCollections.$inferSelect;
 export type InsertUserCollection = typeof userCollections.$inferInsert;
@@ -64,17 +57,14 @@ export type InsertUserCollection = typeof userCollections.$inferInsert;
 /**
  * Community transcription suggestions
  */
-export const transcriptionSuggestions = mysqlTable("transcriptionSuggestions", {
-  id: int("id").autoincrement().primaryKey(),
-  postcardId: int("postcardId").notNull(),
-  userId: int("userId").notNull(),
-  suggestedText: text("suggestedText").notNull(),
-  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, (table) => ({
-  postcardIdIdx: index("postcardId_idx").on(table.postcardId),
-  statusIdx: index("status_idx").on(table.status),
-}));
+export const transcriptionSuggestions = sqliteTable("transcriptionSuggestions", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    postcardId: integer("postcardId").notNull(),
+    userId: integer("userId").notNull(),
+    suggestedText: text("suggestedText").notNull(),
+    status: text("status", { enum: ["pending", "approved", "rejected"] }).default("pending").notNull(),
+    createdAt: integer("createdAt", { mode: 'timestamp' }),
+});
 
 export type TranscriptionSuggestion = typeof transcriptionSuggestions.$inferSelect;
 export type InsertTranscriptionSuggestion = typeof transcriptionSuggestions.$inferInsert;
@@ -82,19 +72,17 @@ export type InsertTranscriptionSuggestion = typeof transcriptionSuggestions.$inf
 /**
  * Images associated with postcards (stored in S3)
  */
-export const postcardImages = mysqlTable("postcardImages", {
-  id: int("id").autoincrement().primaryKey(),
-  postcardId: int("postcardId").notNull(),
-  s3Key: text("s3Key").notNull(),
-  s3Url: text("s3Url").notNull(),
-  originalUrl: text("originalUrl"),
-  isPrimary: boolean("isPrimary").default(false).notNull(),
-  width: int("width"),
-  height: int("height"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, (table) => ({
-  postcardIdIdx: index("postcardId_idx").on(table.postcardId),
-}));
+export const postcardImages = sqliteTable("postcardImages", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    postcardId: integer("postcardId").notNull(),
+    s3Key: text("s3Key").notNull(),
+    s3Url: text("s3Url").notNull(),
+    originalUrl: text("originalUrl"),
+    isPrimary: integer("isPrimary", { mode: 'boolean' }).default(false).notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    createdAt: integer("createdAt", { mode: 'timestamp' }),
+});
 
 export type PostcardImage = typeof postcardImages.$inferSelect;
 export type InsertPostcardImage = typeof postcardImages.$inferInsert;
@@ -102,18 +90,16 @@ export type InsertPostcardImage = typeof postcardImages.$inferInsert;
 /**
  * OCR transcriptions of handwritten text from postcard images
  */
-export const transcriptions = mysqlTable("transcriptions", {
-  id: int("id").autoincrement().primaryKey(),
-  postcardId: int("postcardId").notNull(),
-  imageId: int("imageId"),
-  transcribedText: text("transcribedText").notNull(),
-  confidence: varchar("confidence", { length: 50 }),
-  language: varchar("language", { length: 10 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  postcardIdIdx: index("postcardId_idx").on(table.postcardId),
-}));
+export const transcriptions = sqliteTable("transcriptions", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    postcardId: integer("postcardId").notNull(),
+    imageId: integer("imageId"),
+    transcribedText: text("transcribedText").notNull(),
+    confidence: text("confidence"),
+    language: text("language"),
+    createdAt: integer("createdAt", { mode: 'timestamp' }),
+    updatedAt: integer("updatedAt", { mode: 'timestamp' }),
+});
 
 export type Transcription = typeof transcriptions.$inferSelect;
 export type InsertTranscription = typeof transcriptions.$inferInsert;
@@ -121,19 +107,16 @@ export type InsertTranscription = typeof transcriptions.$inferInsert;
 /**
  * Scraping activity logs for monitoring
  */
-export const scrapingLogs = mysqlTable("scrapingLogs", {
-  id: int("id").autoincrement().primaryKey(),
-  status: mysqlEnum("status", ["started", "completed", "failed"]).notNull(),
-  searchQuery: text("searchQuery"),
-  itemsFound: int("itemsFound").default(0),
-  itemsAdded: int("itemsAdded").default(0),
-  errorMessage: text("errorMessage"),
-  startedAt: timestamp("startedAt").defaultNow().notNull(),
-  completedAt: timestamp("completedAt"),
-}, (table) => ({
-  statusIdx: index("status_idx").on(table.status),
-  startedAtIdx: index("startedAt_idx").on(table.startedAt),
-}));
+export const scrapingLogs = sqliteTable("scrapingLogs", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    status: text("status", { enum: ["started", "completed", "failed"] }).notNull(),
+    searchQuery: text("searchQuery"),
+    itemsFound: integer("itemsFound").default(0),
+    itemsAdded: integer("itemsAdded").default(0),
+    errorMessage: text("errorMessage"),
+    startedAt: integer("startedAt", { mode: 'timestamp' }),
+    completedAt: integer("completedAt", { mode: 'timestamp' }),
+});
 
 export type ScrapingLog = typeof scrapingLogs.$inferSelect;
 export type InsertScrapingLog = typeof scrapingLogs.$inferInsert;

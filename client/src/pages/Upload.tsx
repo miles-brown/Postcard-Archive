@@ -93,8 +93,8 @@ export default function Upload() {
                     <p className="text-muted-foreground mb-6">
                         You must be signed in to upload postcards to the archive.
                     </p>
-                    <Link href="/">
-                        <Button>Back to Home</Button>
+                    <Link href="/login">
+                        <Button>Sign In</Button>
                     </Link>
                 </div>
             </div>

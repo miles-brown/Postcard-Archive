@@ -239,11 +239,11 @@ export default function PostcardDetail() {
                   <div>
                     <p className="text-sm text-muted-foreground">Date Found</p>
                     <p className="font-semibold">
-                      {new Date(postcard.dateFound).toLocaleDateString("en-US", {
+                      {postcard.dateFound ? new Date(postcard.dateFound).toLocaleDateString("en-US", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
-                      })}
+                      }) : 'Unknown Date'}
                     </p>
                   </div>
                 </div>

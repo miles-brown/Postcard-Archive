@@ -30,6 +30,31 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    loginLocalAdmin: publicProcedure
+      .input(z.object({ username: z.string(), password: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (input.username !== 'admin' || input.password !== 'admin.123') {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid credentials' });
+        }
+
+        // Ensure the admin user exists in the DB
+        await db.upsertUser({
+          openId: 'local-admin',
+          name: 'Administrator',
+          email: 'admin@postcard-archive.com',
+          loginMethod: 'local',
+          lastSignedIn: new Date(),
+          role: 'admin'
+        });
+
+        // Set the JWT session token
+        const { sdk } = await import("./_core/sdk");
+        const token = await sdk.createSessionToken('local-admin', { name: "Administrator" });
+
+        ctx.res.cookie(COOKIE_NAME, token, getSessionCookieOptions(ctx.req));
+
+        return { success: true };
+      })
   }),
 
   users: router({

@@ -10,6 +10,7 @@ import PostcardDetail from "./pages/PostcardDetail";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
 import Upload from "./pages/Upload";
+import Login from "./pages/Login";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/profile" component={Profile} />
       <Route path="/upload" component={Upload} />
+      <Route path="/login" component={Login} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

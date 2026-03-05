@@ -117,9 +117,9 @@ export default function Admin() {
           </CardHeader>
           <CardContent>
             {!user ? (
-              <a href={getLoginUrl()} className="block w-full">
-                <Button className="w-full">Authenticate via SSO</Button>
-              </a>
+              <Link href="/login" className="block w-full">
+                <Button className="w-full">Sign In</Button>
+              </Link>
             ) : (
               <Link href="/">
                 <Button className="w-full" variant="outline">Return to Public Root</Button>
@@ -315,7 +315,7 @@ export default function Admin() {
                               {log.status}
                             </Badge>
                             <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded">
-                              {new Date(log.startedAt).toLocaleString()}
+                              {log.startedAt ? new Date(log.startedAt).toLocaleString() : 'Unknown Time'}
                             </span>
                           </div>
                           <p className="text-sm font-medium mt-2">Query Filter: <span className="font-normal text-muted-foreground">{log.searchQuery}</span></p>
@@ -489,7 +489,7 @@ export default function Admin() {
                             </Badge>
                           </div>
                           <h4 className="font-semibold text-base truncate">{postcard.title}</h4>
-                          <p className="text-sm text-muted-foreground truncate mt-1">ID: {postcard.ebayId || `LOCAL-${postcard.id}`} • Imported: {new Date(postcard.dateFound).toLocaleDateString()}</p>
+                          <p className="text-sm text-muted-foreground truncate mt-1">ID: {postcard.ebayId || `LOCAL-${postcard.id}`} • Imported: {postcard.dateFound ? new Date(postcard.dateFound).toLocaleDateString() : 'N/A'}</p>
                         </div>
                         <div className="flex items-center gap-2 sm:self-center">
                           <Link href={`/postcard/${postcard.id}`}>

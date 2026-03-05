@@ -205,7 +205,7 @@ export default function Gallery() {
 
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
-                          {new Date(postcard.dateFound).toLocaleDateString()}
+                          {postcard.dateFound ? new Date(postcard.dateFound).toLocaleDateString() : 'Unknown Date'}
                         </span>
                         {postcard.transcriptionStatus === "completed" && (
                           <Badge variant="outline" className="text-xs">

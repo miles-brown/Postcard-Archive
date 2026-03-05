@@ -34,7 +34,7 @@ export function UserMenu() {
                     </Button>
                 )}
                 <Button asChild variant="default" size="sm">
-                    <a href={getLoginUrl()}>Sign In</a>
+                    <Link href="/login">Sign In</Link>
                 </Button>
             </div>
         );
