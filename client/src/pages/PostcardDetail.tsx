@@ -81,8 +81,31 @@ export default function PostcardDetail() {
     );
   }
 
+  const jsonLdSchema = postcard ? {
+    "@context": {
+      "dc": "http://purl.org/dc/elements/1.1/",
+      "schema": "https://schema.org/"
+    },
+    "@id": `${window.location.origin}/postcard/${postcard.id}`,
+    "@type": ["schema:VisualArtwork", "schema:ArchiveComponent"],
+    "schema:name": postcard.title,
+    "schema:description": postcard.description,
+    "schema:image": postcard.images?.[0]?.s3Url,
+    "schema:artMedium": "Postcard",
+    "dc:title": postcard.title,
+    "dc:subject": postcard.warPeriod,
+    "dc:description": postcard.description,
+    "dc:date": postcard.dateFound,
+    "dc:format": "image/jpeg",
+    "dc:type": "PhysicalObject",
+    "dc:identifier": postcard.ebayId || `LOCAL-${postcard.id}`
+  } : null;
+
   return (
     <div className="min-h-screen bg-background">
+      {jsonLdSchema && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdSchema) }} />
+      )}
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container py-4 flex justify-between items-center">

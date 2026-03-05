@@ -4,6 +4,7 @@ import { nodeProfilingIntegration } from "@sentry/profiling-node";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -50,8 +51,17 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // API Rate Limiting
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+    message: "Too many requests from this IP, please try again after 15 minutes",
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   // Public REST API
-  app.use("/api/v1", apiRouter);
+  app.use("/api/v1", apiLimiter, apiRouter);
   // tRPC API
   app.use(
     "/api/trpc",

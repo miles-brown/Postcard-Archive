@@ -109,21 +109,9 @@ Once tasks are completed, they are moved to `completed-tasks.md`.
 
 ## API Data & Research Tools
 
-- **[ ] API Key rate-limiting**
-  - **Description**: Restrict abuse by setting a gateway key and request quotas.
-  - **Priority**: P2
-  - **Date Added**: 2026-03-05
-  - **Date Completed**: N/A
-
 - **[ ] Bulk export functionalities**
   - **Description**: UI ability to download subsets of transcription data as CSV, JSON, XML.
   - **Priority**: P3
-  - **Date Added**: 2026-03-05
-  - **Date Completed**: N/A
-
-- **[ ] Master metadata schema mapping**
-  - **Description**: Standardize architecture mapping exactly to Dublin Core conventions.
-  - **Priority**: P2
   - **Date Added**: 2026-03-05
   - **Date Completed**: N/A
 
@@ -137,12 +125,6 @@ Once tasks are completed, they are moved to `completed-tasks.md`.
 
 - **[ ] Offline browsing**
   - **Description**: Local caching so users can view previously fetched postcards with no connection.
-  - **Priority**: P2
-  - **Date Added**: 2026-03-05
-  - **Date Completed**: N/A
-
-- **[ ] Dark mode support**
-  - **Description**: Robust dark color theme with persistence using cookies/local storage.
   - **Priority**: P2
   - **Date Added**: 2026-03-05
   - **Date Completed**: N/A

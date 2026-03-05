@@ -15,26 +15,32 @@ apiRouter.get("/postcards", async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
 
-    const cards = await db.query.postcards.findMany({
-      limit,
-      offset,
-      orderBy: [desc(postcards.dateFound)],
-      where: eq(postcards.isPublic, true),
-      with: {
-        images: true,
-        transcriptions: true,
-      },
-    });
+    const cards = await db
+      .select()
+      .from(postcards)
+      .where(eq(postcards.isPublic, true))
+      .orderBy(desc(postcards.dateFound))
+      .limit(limit)
+      .offset(offset);
+
+    // Fetch related data since we aren't using the schema-aware relational .query method here
+    const populatedCards = await Promise.all(
+      cards.map(async (card) => {
+        const images = await db.select().from(postcardImages).where(eq(postcardImages.postcardId, card.id));
+        const txs = await db.select().from(transcriptions).where(eq(transcriptions.postcardId, card.id));
+        return { ...card, images, transcriptions: txs };
+      })
+    );
 
     const totalCountQuery = await db
-      .select({ count: sql<number>\`count(*)\` })
+      .select({ count: sql<number>`count(*)` })
       .from(postcards)
       .where(eq(postcards.isPublic, true));
-      
+
     const totalCount = totalCountQuery[0].count;
 
     res.json({
-      data: cards,
+      data: populatedCards,
       meta: {
         page,
         limit,
@@ -57,13 +63,18 @@ apiRouter.get("/postcards/:id", async (req, res) => {
     const id = parseInt(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid ID parameter" });
 
-    const card = await db.query.postcards.findFirst({
-      where: eq(postcards.id, id),
-      with: {
-        images: true,
-        transcriptions: true,
-      },
-    });
+    const cards = await db
+      .select()
+      .from(postcards)
+      .where(eq(postcards.id, id))
+      .limit(1);
+
+    const card: any = cards.length > 0 ? cards[0] : null;
+
+    if (card) {
+      card.images = await db.select().from(postcardImages).where(eq(postcardImages.postcardId, card.id));
+      card.transcriptions = await db.select().from(transcriptions).where(eq(transcriptions.postcardId, card.id));
+    }
 
     if (!card || !card.isPublic) {
       return res.status(404).json({ error: "Postcard not found" });

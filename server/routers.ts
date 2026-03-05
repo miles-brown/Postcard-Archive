@@ -142,15 +142,15 @@ export const appRouter = router({
           const extension = base64.substring("data:image/".length, base64.indexOf(";base64"));
           const relKey = `postcards/uploads/${Date.now()}_${prefix}.${extension || "jpg"}`;
           const result = await storagePut(relKey, buffer, `image/${extension || "jpeg"}`);
-          return result.url;
+          return { url: result.url, key: relKey };
         };
 
-        const [frontUrl, backUrl] = await Promise.all([
+        const [front, back] = await Promise.all([
           uploadImage(input.frontImageBase64, "front"),
           input.backImageBase64 ? uploadImage(input.backImageBase64, "back") : Promise.resolve(null)
         ]);
 
-        const returnedPostcards = await dbInstance.insert(postcards).values({
+        const postcardId = await db.createPostcard({
           title: input.title,
           description: input.description,
           warPeriod: input.warPeriod,
@@ -159,20 +159,20 @@ export const appRouter = router({
           isPublic: false,
           transcriptionStatus: "pending",
           uploadedBy: ctx.user.id
-        }).returning({ insertedId: postcards.id });
-
-        const postcardId = returnedPostcards[0].insertedId;
+        });
 
         await db.createPostcardImage({
           postcardId,
-          s3Url: frontUrl,
+          s3Key: front.key,
+          s3Url: front.url,
           isPrimary: true
         });
 
-        if (backUrl) {
+        if (back) {
           await db.createPostcardImage({
             postcardId,
-            s3Url: backUrl,
+            s3Key: back.key,
+            s3Url: back.url,
             isPrimary: false
           });
         }

@@ -241,3 +241,15 @@ This document contains all the completed tasks for the Postcard Archive project,
   - **Priority**: P1
   - **Date Added**: 2026-03-05
   - **Date Completed**: 2026-03-05
+
+- **[x] Dark mode support**
+  - **Description**: Activated switchable theming utilizing localStorage context persistence and UI toggles integrated into the User Menu dropdown.
+  - **Priority**: P2
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
+
+- **[x] Master metadata schema mapping**
+  - **Description**: Injected dual Dublin Core & Schema.org JSON-LD standard payloads onto postcard gallery detail views to enhance machine-parseability of the archival collection index.
+  - **Priority**: P2
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
