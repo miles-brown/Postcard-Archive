@@ -1,18 +1,60 @@
-import { useRoute, Link } from "wouter";
+import { useState } from "react";
+import { Link, useRoute } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ArrowLeft, ExternalLink, Calendar, DollarSign, User, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Loader2, ArrowLeft, ExternalLink, Calendar, DollarSign, User,
+  ZoomIn, ZoomOut, Maximize, Bookmark, Edit3
+} from "lucide-react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import { UserMenu } from "@/components/UserMenu";
 
 export default function PostcardDetail() {
   const [, params] = useRoute("/postcard/:id");
   const postcardId = params?.id ? parseInt(params.id) : 0;
 
+  const [suggestion, setSuggestion] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const utils = trpc.useUtils();
+
+  const { data: user } = trpc.auth.me.useQuery();
+
   const { data: postcard, isLoading, error } = trpc.postcards.getById.useQuery({
     id: postcardId,
+  });
+
+  const { data: isSaved } = trpc.users.isPostcardSaved.useQuery(postcardId, {
+    enabled: !!user && postcardId > 0,
+  });
+
+  const toggleSave = trpc.users.toggleSavePostcard.useMutation({
+    onSuccess: (data) => {
+      utils.users.isPostcardSaved.invalidate(postcardId);
+      toast.success(data.saved ? "Saved to your collection" : "Removed from collection");
+    }
+  });
+
+  const submitSuggestion = trpc.users.submitTranscriptionSuggestion.useMutation({
+    onSuccess: () => {
+      setDialogOpen(false);
+      setSuggestion("");
+      toast.success("Thank you! Your transcription suggestion has been submitted for review.");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to submit suggestion");
+    }
   });
 
   if (isLoading) {
@@ -43,13 +85,14 @@ export default function PostcardDetail() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card">
-        <div className="container py-6">
+        <div className="container py-4 flex justify-between items-center">
           <Link href="/gallery">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Gallery
             </Button>
           </Link>
+          <UserMenu />
         </div>
       </header>
 
@@ -105,18 +148,32 @@ export default function PostcardDetail() {
             <div>
               <div className="flex items-start justify-between mb-4">
                 <h1 className="text-4xl font-bold">{postcard.title}</h1>
-                <Badge
-                  variant={
-                    postcard.warPeriod === "WWI"
-                      ? "secondary"
-                      : postcard.warPeriod === "WWII"
-                        ? "default"
-                        : "destructive"
-                  }
-                  className="text-sm"
-                >
-                  {postcard.warPeriod}
-                </Badge>
+                <div className="flex flex-col items-end gap-2">
+                  <Badge
+                    variant={
+                      postcard.warPeriod === "WWI"
+                        ? "secondary"
+                        : postcard.warPeriod === "WWII"
+                          ? "default"
+                          : "destructive"
+                    }
+                    className="text-sm"
+                  >
+                    {postcard.warPeriod}
+                  </Badge>
+                  {user && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`gap-2 ${isSaved ? 'bg-primary/10 text-primary border-primary/20' : ''}`}
+                      onClick={() => toggleSave.mutate({ postcardId })}
+                      disabled={toggleSave.isPending}
+                    >
+                      <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+                      {isSaved ? "Saved" : "Save to Collection"}
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {postcard.description && (
@@ -187,8 +244,42 @@ export default function PostcardDetail() {
             {/* Transcriptions */}
             {postcard.transcriptions && postcard.transcriptions.length > 0 && (
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-xl">Transcription</CardTitle>
+                  {user && (
+                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Edit3 className="h-4 w-4" />
+                          Suggest Fix
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Suggest a Transcription Fix</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4 space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Notice an error in the AI-generated transcription? Help us improve the archive by submitting your correction.
+                          </p>
+                          <Textarea
+                            placeholder="Type your suggested transcription here..."
+                            className="min-h-[150px] font-serif"
+                            value={suggestion}
+                            onChange={(e) => setSuggestion(e.target.value)}
+                          />
+                          <Button
+                            className="w-full"
+                            disabled={!suggestion.trim() || submitSuggestion.isPending}
+                            onClick={() => submitSuggestion.mutate({ postcardId, suggestedText: suggestion })}
+                          >
+                            {submitSuggestion.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Submit Suggestion
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {postcard.transcriptions.map((transcription, index) => (

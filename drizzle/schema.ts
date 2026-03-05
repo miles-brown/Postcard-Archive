@@ -33,6 +33,7 @@ export const postcards = mysqlTable("postcards", {
   dateFound: timestamp("dateFound").defaultNow().notNull(),
   transcriptionStatus: mysqlEnum("transcriptionStatus", ["pending", "processing", "completed", "failed"]).default("pending").notNull(),
   isPublic: boolean("isPublic").default(true).notNull(),
+  uploadedBy: int("uploadedBy"), // Populated if a user manually uploaded
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -43,6 +44,40 @@ export const postcards = mysqlTable("postcards", {
 
 export type Postcard = typeof postcards.$inferSelect;
 export type InsertPostcard = typeof postcards.$inferInsert;
+
+/**
+ * Saved postcard collections mapping users to postcards
+ */
+export const userCollections = mysqlTable("userCollections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  postcardId: int("postcardId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("userId_idx").on(table.userId),
+  postcardIdIdx: index("postcardId_idx").on(table.postcardId),
+}));
+
+export type UserCollection = typeof userCollections.$inferSelect;
+export type InsertUserCollection = typeof userCollections.$inferInsert;
+
+/**
+ * Community transcription suggestions
+ */
+export const transcriptionSuggestions = mysqlTable("transcriptionSuggestions", {
+  id: int("id").autoincrement().primaryKey(),
+  postcardId: int("postcardId").notNull(),
+  userId: int("userId").notNull(),
+  suggestedText: text("suggestedText").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  postcardIdIdx: index("postcardId_idx").on(table.postcardId),
+  statusIdx: index("status_idx").on(table.status),
+}));
+
+export type TranscriptionSuggestion = typeof transcriptionSuggestions.$inferSelect;
+export type InsertTranscriptionSuggestion = typeof transcriptionSuggestions.$inferInsert;
 
 /**
  * Images associated with postcards (stored in S3)

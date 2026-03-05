@@ -193,3 +193,51 @@ This document contains all the completed tasks for the Postcard Archive project,
   - **Priority**: P1
   - **Date Added**: 2026-03-05
   - **Date Completed**: 2026-03-05
+
+- **[x] Design REST/GraphQL API**
+  - **Description**: Developed a public REST endpoint under `/api/v1/postcards` with pagination allowing researchers to query JSON objects.
+  - **Priority**: P1
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
+
+- **[x] App telemetry and error tracking**
+  - **Description**: Connected Sentry with React/Node and configured full stack traces.
+  - **Priority**: P1
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
+
+- **[x] Implement user registration, collections, and profiles**
+  - **Description**: Connected to OAuth provider, built a user menu UI, and created a Custom User Collection profile gallery mapping.
+  - **Priority**: P1
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
+
+- **[x] Crowdsourced transcription interface**
+  - **Description**: Enabled authenticated users to submit overlay transcription suggestions using TRPC database mutations and a UI dialog.
+  - **Priority**: P1
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
+
+- **[x] Set up global CDN**
+  - **Description**: Configured an application-side CDN utility mapping S3 buckets to Cloudflare distribution endpoints to accelerate media loading speed.
+  - **Priority**: P1
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
+
+- **[x] Direct user upload portal**
+  - **Description**: Safe mechanism for users to donate and upload digital representations, converting image data to base64, storing in the CDN-proxy storage, and tracking with Drizzle Postgres.
+  - **Priority**: P1
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
+
+- **[x] Accessibility enhancements**
+  - **Description**: Configured axe-core in development specifically for WCAG 2.1 AA accessibility compliance hunting, verified shadcn dialog focus management, and validated Aria attributes.
+  - **Priority**: P1
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
+
+- **[x] Automated E2E testing**
+  - **Description**: Converted E2E test suites into Playwright workflows. Created a configuration file, testing scenarios, and routing logic checks.
+  - **Priority**: P1
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05

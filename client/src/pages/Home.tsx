@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Archive, Search, Clock } from "lucide-react";
+import { UserMenu } from "@/components/UserMenu";
 
 export default function Home() {
   return (
@@ -11,8 +12,12 @@ export default function Home() {
         {/* Geometric shapes */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] geometric-shape geometric-shape-blue translate-x-64 -translate-y-64" />
         <div className="absolute bottom-0 left-0 w-96 h-96 geometric-shape geometric-shape-pink -translate-x-32 translate-y-32" />
-        
-        <div className="container relative py-24 md:py-32 lg:py-40">
+
+        <div className="container relative pt-6 flex justify-end">
+          <UserMenu />
+        </div>
+
+        <div className="container relative pb-24 pt-12 md:pb-32 lg:pb-40">
           <div className="max-w-4xl">
             <h1 className="text-6xl md:text-8xl font-bold mb-6 leading-tight">
               Historical
@@ -21,11 +26,11 @@ export default function Home() {
               <br />
               Archive
             </h1>
-            
+
             <p className="subtitle text-xl md:text-2xl mb-12 max-w-2xl">
               Preserving and transcribing handwritten postcards from WWI, WWII, and the Holocaust
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4">
               <Link href="/gallery">
                 <Button size="lg" className="text-lg px-8">
@@ -33,7 +38,13 @@ export default function Home() {
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              
+
+              <Link href="/upload">
+                <Button size="lg" variant="secondary" className="text-lg px-8">
+                  Upload Document
+                </Button>
+              </Link>
+
               <Link href="/about">
                 <Button size="lg" variant="outline" className="text-lg px-8">
                   Learn More
@@ -97,7 +108,7 @@ export default function Home() {
       {/* CTA Section */}
       <section className="relative overflow-hidden bg-card">
         <div className="absolute top-1/2 left-1/2 w-[800px] h-[800px] geometric-shape geometric-shape-blue -translate-x-1/2 -translate-y-1/2" />
-        
+
         <div className="container relative py-24 md:py-32 text-center">
           <h2 className="text-4xl md:text-6xl font-bold mb-6">
             Start Exploring
@@ -105,7 +116,7 @@ export default function Home() {
           <p className="subtitle text-lg md:text-xl mb-12 max-w-2xl mx-auto">
             Browse our growing collection of historical postcards and their transcriptions
           </p>
-          
+
           <Link href="/gallery">
             <Button size="lg" className="text-lg px-8">
               View Gallery
@@ -125,7 +136,7 @@ export default function Home() {
                 Preserving handwritten history through automated discovery and AI transcription
               </p>
             </div>
-            
+
             <div>
               <h4 className="font-bold mb-3">Navigation</h4>
               <ul className="space-y-2 text-sm">
@@ -145,7 +156,7 @@ export default function Home() {
                 </li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-bold mb-3">War Periods</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
@@ -155,7 +166,7 @@ export default function Home() {
               </ul>
             </div>
           </div>
-          
+
           <div className="mt-12 pt-8 border-t border-border text-center text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} Historical Postcard Archive. All rights reserved.</p>
           </div>

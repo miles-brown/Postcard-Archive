@@ -8,6 +8,8 @@ import Home from "./pages/Home";
 import Gallery from "./pages/Gallery";
 import PostcardDetail from "./pages/PostcardDetail";
 import Admin from "./pages/Admin";
+import Profile from "./pages/Profile";
+import Upload from "./pages/Upload";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -17,6 +19,8 @@ function Router() {
       <Route path={"/gallery"} component={Gallery} />
       <Route path="/postcard/:id" component={PostcardDetail} />
       <Route path="/admin" component={Admin} />
+      <Route path="/profile" component={Profile} />
+      <Route path="/upload" component={Upload} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -34,7 +38,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider
         defaultTheme="light"
-        // switchable
+      // switchable
       >
         <TooltipProvider>
           <Toaster />

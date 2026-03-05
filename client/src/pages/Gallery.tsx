@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { UserMenu } from "@/components/UserMenu";
 
 export default function Gallery() {
   const [warPeriod, setWarPeriod] = useState<string>("all");
@@ -41,14 +42,17 @@ export default function Gallery() {
       <header className="relative bg-card border-b border-border overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 geometric-shape geometric-shape-blue translate-x-32 -translate-y-32" />
         <div className="absolute bottom-0 left-0 w-64 h-64 geometric-shape geometric-shape-pink -translate-x-16 translate-y-16" />
-        
+
         <div className="container relative py-16 md:py-24">
-          <Link href="/">
-            <Button variant="ghost" className="mb-8">
-              ← Back to Home
-            </Button>
-          </Link>
-          
+          <div className="flex justify-between items-center mb-8">
+            <Link href="/">
+              <Button variant="ghost">
+                ← Back to Home
+              </Button>
+            </Link>
+            <UserMenu />
+          </div>
+
           <h1 className="text-5xl md:text-7xl font-bold mb-4">
             Postcard Archive
           </h1>
@@ -153,7 +157,7 @@ export default function Gallery() {
             <div className="mb-6 text-sm text-muted-foreground">
               Showing {postcards.length} {postcards.length === 1 ? "postcard" : "postcards"}
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {postcards.map((postcard) => (
                 <Link key={postcard.id} href={`/postcard/${postcard.id}`}>
@@ -171,7 +175,7 @@ export default function Gallery() {
                           No image
                         </div>
                       )}
-                      
+
                       {/* War period badge */}
                       <div className="absolute top-3 right-3">
                         <Badge
@@ -179,8 +183,8 @@ export default function Gallery() {
                             postcard.warPeriod === "WWI"
                               ? "secondary"
                               : postcard.warPeriod === "WWII"
-                              ? "default"
-                              : "destructive"
+                                ? "default"
+                                : "destructive"
                           }
                         >
                           {postcard.warPeriod}
@@ -192,7 +196,7 @@ export default function Gallery() {
                       <h3 className="font-bold text-lg mb-2 line-clamp-2">
                         {postcard.title}
                       </h3>
-                      
+
                       {postcard.description && (
                         <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
                           {postcard.description}

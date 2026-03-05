@@ -1,4 +1,6 @@
 import "dotenv/config";
+import * as Sentry from "@sentry/node";
+import { nodeProfilingIntegration } from "@sentry/profiling-node";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
@@ -6,6 +8,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import { apiRouter } from "../routes/api";
 import { serveStatic, setupVite } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -28,13 +31,27 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // Sentry Initialization
+  Sentry.init({
+    dsn: process.env.VITE_SENTRY_DSN || "",
+    integrations: [
+      nodeProfilingIntegration(),
+    ],
+    tracesSampleRate: 1.0,
+    profilesSampleRate: 1.0,
+  });
+
   const app = express();
+  Sentry.setupExpressErrorHandler(app);
+
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // Public REST API
+  app.use("/api/v1", apiRouter);
   // tRPC API
   app.use(
     "/api/trpc",

@@ -7,7 +7,17 @@ import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+import { sentryVitePlugin } from "@sentry/vite-plugin";
+const plugins = [
+  react(),
+  tailwindcss(),
+  jsxLocPlugin(),
+  vitePluginManusRuntime(),
+  sentryVitePlugin({
+    org: process.env.VITE_SENTRY_ORG || "my-org",
+    project: process.env.VITE_SENTRY_PROJECT || "my-project",
+  })
+];
 
 export default defineConfig({
   plugins,
