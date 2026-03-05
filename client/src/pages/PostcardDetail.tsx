@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ArrowLeft, ExternalLink, Calendar, DollarSign, User } from "lucide-react";
+import { Loader2, ArrowLeft, ExternalLink, Calendar, DollarSign, User, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 export default function PostcardDetail() {
   const [, params] = useRoute("/postcard/:id");
@@ -58,12 +59,37 @@ export default function PostcardDetail() {
           <div className="space-y-4">
             {postcard.images && postcard.images.length > 0 ? (
               postcard.images.map((image, index) => (
-                <Card key={image.id} className="overflow-hidden">
-                  <img
-                    src={image.s3Url}
-                    alt={`${postcard.title} - Image ${index + 1}`}
-                    className="w-full h-auto"
-                  />
+                <Card key={image.id} className="overflow-hidden relative group">
+                  <TransformWrapper
+                    initialScale={1}
+                    minScale={1}
+                    maxScale={8}
+                    centerZoomedOut={true}
+                    wheel={{ step: 0.1 }}
+                  >
+                    {({ zoomIn, zoomOut, resetTransform }) => (
+                      <>
+                        <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 p-1 rounded-md backdrop-blur-sm border shadow-sm">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => zoomIn()}>
+                            <ZoomIn className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => zoomOut()}>
+                            <ZoomOut className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => resetTransform()}>
+                            <Maximize className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
+                          <img
+                            src={image.s3Url}
+                            alt={`${postcard.title} - Image ${index + 1}`}
+                            className="w-full h-auto cursor-zoom-in"
+                          />
+                        </TransformComponent>
+                      </>
+                    )}
+                  </TransformWrapper>
                 </Card>
               ))
             ) : (
@@ -84,8 +110,8 @@ export default function PostcardDetail() {
                     postcard.warPeriod === "WWI"
                       ? "secondary"
                       : postcard.warPeriod === "WWII"
-                      ? "default"
-                      : "destructive"
+                        ? "default"
+                        : "destructive"
                   }
                   className="text-sm"
                 >
@@ -168,7 +194,7 @@ export default function PostcardDetail() {
                   {postcard.transcriptions.map((transcription, index) => (
                     <div key={transcription.id}>
                       {index > 0 && <Separator className="my-6" />}
-                      
+
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           {transcription.language && (
@@ -182,7 +208,7 @@ export default function PostcardDetail() {
                             </Badge>
                           )}
                         </div>
-                        
+
                         <div className="bg-muted p-4 rounded-lg">
                           <p className="whitespace-pre-wrap font-serif leading-relaxed">
                             {transcription.transcribedText}
@@ -217,14 +243,14 @@ export default function PostcardDetail() {
             )}
           </div>
         </div>
-      </main>
+      </main >
 
       {/* Footer */}
-      <footer className="border-t border-border mt-24">
+      < footer className="border-t border-border mt-24" >
         <div className="container py-12 text-center text-sm text-muted-foreground">
           <p>Historical Postcard Archive • Preserving handwritten history</p>
         </div>
-      </footer>
-    </div>
+      </footer >
+    </div >
   );
 }
