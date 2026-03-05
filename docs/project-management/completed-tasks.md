@@ -253,3 +253,9 @@ This document contains all the completed tasks for the Postcard Archive project,
   - **Priority**: P2
   - **Date Added**: 2026-03-05
   - **Date Completed**: 2026-03-05
+
+- **[x] API Key rate-limiting**
+  - **Description**: Restricted abuse by setting an `express-rate-limit` gateway restricting IPs to 1000 requests per 15 minute window on the root public `/api/v1` gateway.
+  - **Priority**: P2
+  - **Date Added**: 2026-03-05
+  - **Date Completed**: 2026-03-05
